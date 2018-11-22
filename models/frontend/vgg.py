@@ -29,6 +29,8 @@ class VGG(object):
 
         if weights is 'imagenet':
             print('Initial {} from official pre-trained model "imagenet"'.format(self.vgg_version))
+        elif weights is None:
+            print('Baby sitting training staert')
         elif os.path.splitext(weights)[-1] !='.h5':
             assert 'weights should bt H5 file, but now is {}'.format(os.path.splitext(weights)[-1])
 

@@ -1,4 +1,3 @@
-
 import os
 import shutil
 
@@ -11,41 +10,81 @@ from task import *
 from monitor import *
 from train_utils import *
 
-num_classes = 10
-epochs = 10
+epochs = 50
 
 
 def main(argv):
-
     aug_seq = seq
-    cifa_train_data = CIFARDataGen(batch_size=32,resize_shape=(224,224),cifa_10=True,train_phase=True,shuffle=True,augment=False,aug_seq=aug_seq)
-    cifa_val_data = CIFARDataGen(batch_size=32,resize_shape=(224,224),cifa_10=True,train_phase=False,shuffle=True,augment=False)
 
+    data_path = "./data/metadata/OCR/chezai_20181121"
+
+    ocr_train_data = OCRDataGen(data_path,
+                                characterset='BCEGNS1247',
+                                fixed_length=2,
+                                batch_size=32,
+                                resize_shape=(224, 224),
+                                shuffle=True,
+                                augment=True,
+                                aug_seq=aug_seq)
+    ocr_val_data = OCRDataGen(data_path + '_val',
+                              characterset='BCEGNS1247',
+                              fixed_length=2,
+                              batch_size=32,
+                              resize_shape=(224, 224),
+                              shuffle=False, augment=False)
+
+    ocr_test_data = OCRDataGen(data_path + '_test',
+                               characterset='BCEGNS1247',
+                               fixed_length=2,
+                               batch_size=32,
+                               resize_shape=(224, 224),
+                               shuffle=False,
+                               augment=False)
 
     model = VGG(input_shape=[224, 224, 3])()
-    layer_shape = [1000, 1000, num_classes]
-    activation = ['relu', 'relu', 'softmax']
-    model = classifier(model, layer_shape=layer_shape, activation=activation)
+    layer_shape = [1000, 1000]
+    activation = ['relu', 'relu']
+    model = multi_label_classifier(base_model=model,
+                                   class_num=ocr_train_data.class_num,
+                                   label_max_length=2,
+                                   layer_shape=layer_shape,
+                                   activation=activation)
     model.summary()
 
+    adam = Adam(lr=1e-4)
 
-    adam = Adam(lr=1e-6)
-    model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=['acc', f1])
+    fscore = F1()
 
-    callbacks = callback_build(val_data_generate=cifa_val_data,batch_size=32,log_dir='./logs',tb_mode='batch',tb_period=20,save_ckpt_period=1,ckpt_monitor='val_acc',lr_monitor='val_loss',clear_log=True)
+    f1 = fscore.f1
+    metrics = ['acc',f1]
+    model.compile(optimizer=adam,
+                  loss='categorical_crossentropy',
+                  metrics=metrics)
 
-    model.fit_generator(
-        cifa_train_data,
-        steps_per_epoch=len(cifa_train_data),
+    callbacks = callback_build(val_data_generate=ocr_test_data,
+                               batch_size=32,
+                               log_dir='./logs',
+                               tb_mode='batch',
+                               tb_period=20,
+                               save_ckpt_period=1,
+                               ckpt_monitor='val_acc',
+                               lr_monitor='val_loss',
+                               clear_log=True,
+                               threshold_update_fn=fscore.f1_full_validation)
+
+    hist = model.fit_generator(
+        ocr_train_data,
+        steps_per_epoch=len(ocr_train_data),
         epochs=epochs,
-        validation_data=cifa_val_data,
-        validation_steps=8,
+        validation_data=ocr_val_data,
+        validation_steps=len(ocr_train_data),
         callbacks=callbacks)
 
+    print('User should use threshold like this {}'.format(fscore.final_t))
+
+    draw_hist(hist=hist,metrics=metrics,clear_log=True)
 
 
 if __name__ == "__main__":
-
-
-    #set_seed(666)
+    # set_seed(666)
     tf.app.run()

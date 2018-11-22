@@ -1,2 +1,2 @@
-from .classification import classifier
-
+from .classification import single_label_classifier
+from .classification import multi_label_classifier

@@ -95,11 +95,6 @@ class CustomTensorboard(TensorBoard):
                     tensors += [K.learning_phase()]
 
                 iter_time = len(val_data)  # iter times
-                tensor_num = len(tensors)
-                _, height, width, channel = val_data[0][0].shape
-
-
-
                 if self.model.sample_weight_mode is None:
                     batch_sample_weighted = np.ones((self.batch_size,))
 
@@ -143,10 +138,6 @@ class CustomTensorboard(TensorBoard):
 
                     if self.model.uses_learning_phase:
                         tensors += [K.learning_phase()]
-
-                    iter_time = len(val_data) #iter times
-                    tensor_num = len(tensors)
-                    _,height,width,channel = val_data[0][0].shape
 
                     if self.model.sample_weight_mode is None:
                         batch_sample_weighted = np.ones((self.batch_size,))
@@ -211,8 +202,6 @@ class FullEvaluate(Callback):
             tensors += [K.learning_phase()]
 
         iter_time = len(val_data)  # iter times
-        _, height, width, channel = val_data[0][0].shape
-
         i = 0
 
         full_pred = np.empty((0,self.class_num))
@@ -237,9 +226,76 @@ class FullEvaluate(Callback):
         y_pred = np.argmax(full_pred,axis=-1)
         y_true = np.argmax(full_true,axis=-1)
 
-        cm_analysis(y_true=y_true,y_pred=y_pred,filename=self.log_dir,labels=self.class_name)
+        filename = os.path.join(self.log_dir,'{:2d}-{val_loss:.2f}-{val_acc:.2f}.png'.format(epoch,**logs))
+        cm_analysis(y_true=y_true,y_pred=y_pred,filename=filename,labels=self.class_name)
 
 
+
+class FullEvaluateForMultiLabels(Callback):
+    def __init__(self,validation_data,batch_size,log_dir='./logs',threshold_update_fn=None):
+
+        super(FullEvaluateForMultiLabels, self).__init__()
+        self.log_dir = log_dir
+        self.batch_size = batch_size
+        self.validation_data = validation_data
+        self.class_num = validation_data.class_num
+        self.fixed_length = validation_data.fixed_length
+        self.class_name = validation_data.class_name
+        self.threshold_update_fn = threshold_update_fn
+        if not isinstance(self.validation_data, Sequence):
+            raise ValueError("Validation_data must be provided, and must be a generator (like Sequence obj).")
+        # use iter_sequence to avoid the queue is unvaliable
+        self.output_generator = iter_sequence_infinite(self.validation_data)
+
+    def set_model(self, model):
+        if K.backend() == 'tensorflow':
+            self.sess = K.get_session()
+        super(FullEvaluateForMultiLabels,self).set_model(model)
+
+    def on_epoch_end(self, epoch, logs=None):
+
+        val_data = self.validation_data
+        tensors = (self.model.inputs +
+                   self.model.targets +
+                   self.model.sample_weights)
+
+        if self.model.uses_learning_phase:
+            tensors += [K.learning_phase()]
+
+        iter_time = len(val_data)  # iter times
+        i = 0
+
+        full_pred = np.empty((0,self.fixed_length,self.class_num))
+        full_true = np.empty((0,self.fixed_length,self.class_num))
+        while i < iter_time:
+            if self.model.sample_weight_mode is None:
+                batch_sample_weighted = np.ones((self.batch_size,))
+
+            batch_image, batch_label = next(self.output_generator)
+
+            val = (batch_image, batch_label, batch_sample_weighted)
+            if self.model.uses_learning_phase:
+                val += [False]
+
+            assert len(val) == len(tensors)
+            feed_dict = dict(zip(tensors, val))
+            pred = self.sess.run([self.model.output], feed_dict=feed_dict)
+
+            batch_label = batch_label.reshape((-1,self.fixed_length,self.class_num))
+            pred = pred[0].reshape((-1,self.fixed_length,self.class_num))
+            full_pred = np.concatenate((full_pred,pred),axis=0)
+            full_true = np.concatenate((full_true,batch_label),axis=0)
+            i+=1
+
+        # Update f1 score threshold
+        if self.threshold_update_fn:
+            self.threshold_update_fn(full_true,full_pred,self.class_num)
+
+        # Need to do confusion matrix update
+        y_pred = np.argmax(full_pred,axis=-1).reshape(-1)
+        y_true = np.argmax(full_true,axis=-1).reshape(-1)
+        filename = os.path.join(self.log_dir,'{:2d}-{val_loss:.2f}-{val_acc:.2f}.png'.format(epoch,**logs))
+        cm_analysis(y_true=y_true,y_pred=y_pred,filename=filename,labels=self.class_name)
 
 def iter_sequence_infinite(seq):
     """Iterate indefinitely over a Sequence.

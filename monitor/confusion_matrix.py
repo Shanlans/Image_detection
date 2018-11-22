@@ -8,7 +8,7 @@ from sklearn.metrics import confusion_matrix
 
 
 
-def cm_analysis(y_true, y_pred, filename, labels, ymap=None, figsize=(10,10)):
+def cm_analysis(y_true, y_pred, filename, labels, ymap=None, figsize=(12,12),fontsize=14):
     """
     Generate matrix plot of confusion matrix with pretty annotations.
     The plot image is saved to disk.
@@ -28,7 +28,7 @@ def cm_analysis(y_true, y_pred, filename, labels, ymap=None, figsize=(10,10)):
         y_pred = [ymap[yi] for yi in y_pred]
         y_true = [ymap[yi] for yi in y_true]
         labels = [ymap[yi] for yi in labels]
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred,labels=np.arange(len(labels)))
     cm_sum = np.sum(cm, axis=1, keepdims=True)
     cm_perc = cm / cm_sum.astype(float) * 100
     annot = np.empty_like(cm).astype(str)
@@ -45,10 +45,18 @@ def cm_analysis(y_true, y_pred, filename, labels, ymap=None, figsize=(10,10)):
             else:
                 annot[i, j] = '%.1f%%\n%d' % (p, c)
     cm = pd.DataFrame(cm, index=labels, columns=labels)
-    cm.index.name = 'Actual'
-    cm.columns.name = 'Predicted'
+
+    plt.ioff()
     fig, ax = plt.subplots(figsize=figsize)
-    sns.heatmap(cm, annot=annot, fmt='', ax=ax)
+    heatmap = sns.heatmap(cm, annot=annot, fmt='', ax=ax)
+
+    heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=0, ha='right', fontsize=fontsize)
+    heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right', fontsize=fontsize)
+
+    plt.ylabel('True label',fontsize=fontsize)
+    plt.xlabel('Predicted label',fontsize=fontsize)
+
     plt.savefig(filename)
+    plt.close(fig)
 
 

@@ -1,43 +1,26 @@
+import os
 import math
 import numpy as np
 import imgaug as ia
+import pandas as pd
+import cv2
 
 from keras.utils import np_utils, Sequence
 from keras.datasets import cifar10, cifar100
 
-CIFAR10 = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
-
-CIFAR100 = ["beaver", "dolphin", "otter", "seal", "whale",
-              "aquarium fish", "flatfish", "ray", "shark", "trout",
-              "orchids", "poppies", "roses", "sunflowers", "tulips",
-              "bottles", "bowls", "cans", "cups", "plates",
-              "apples", "mushrooms", "oranges", "pears", "sweet peppers",
-              "clock", "computer keyboard", "lamp", "telephone", "television",
-              "bed", "chair", "couch", "table", "wardrobe",
-              "bee", "beetle", "butterfly", "caterpillar", "cockroach",
-              "bear", "leopard", "lion", "tiger", "wolf",
-              "bridge", "castle", "house", "road", "skyscraper",
-              "cloud", "forest", "mountain", "plain", "sea",
-              "camel", "cattle", "chimpanzee", "elephant", "kangaroo",
-              "fox", "porcupine", "possum", "raccoon", "skunk",
-              "crab", "lobster", "snail", "spider", "worm",
-              "baby", "boy", "girl", "man", "woman",
-              "crocodile", "dinosaur", "lizard", "snake", "turtle",
-              "hamster", "mouse", "rabbit", "shrew", "squirrel",
-              "maple", "oak", "palm", "pine", "willow",
-              "bicycle", "bus", "motorcycle", "pickup truck", "train",
-              "lawn-mower", "rocket", "streetcar", "tank", "tractor"]
 
 
-class CIFARDataGen(Sequence):
+class OCRDataGen(Sequence):
 
-    def __init__(self, batch_size, resize_shape, cifa_10=True, train_phase=True, shuffle=False,
+    def __init__(self, data_path,characterset,fixed_length,batch_size, resize_shape, train_phase=True, shuffle=False,
                  use_cache=True, augment=False, aug_seq=None):
         """
+
+        :param data_path: A string, point to data classification data path
+        :param characterset: A String, E.g '0123456789+-*()' (15 characters)
+        :param fixed_length: A Integer. This OCR data generator only support the fixed length ocr
         :param batch_size: An Integer, Batch size for training
         :param resize_shape: A Tuple. (Width,Height), image should be resize to the shape which matches model input shape
-        :param cifa_10: Boolean. Default is 'True' which means loading the cifa-10 dataset,
-                        otherwise using the cifa-100 dataset
         :param train_phase: Boolean, Default is 'True' which will return the training data (images and labels),
                             otherwise return the validation data (images and labels)
         :param shuffle: Boolean. Default is 'False' which would not shuffle data set, otherwise shuffle it
@@ -47,25 +30,25 @@ class CIFARDataGen(Sequence):
         :param aug_seq: ImgAug Sequential Object. Default is None. A simple sequence can follow this guide https://imgaug.readthedocs.io/en/latest/source/examples_basics.html#a-simple-and-common-augmentation-sequence
         """
 
+        self.data_path = os.path.join(data_path,'label.csv')
+        self.images_path = os.path.join(data_path,'image')
+        self.characterset = characterset
+        self.fixed_length = fixed_length
         self.batch_size = batch_size
         self.resize_shape = resize_shape
-        self.cifa_10 = cifa_10
         self.train_phase = train_phase
         self.shuffle = shuffle
         self.use_cache = use_cache
         self.augment = augment
         self.aug_seq = aug_seq
 
-        self.images_shape = (resize_shape[0],resize_shape[1],3)
+        # Get character encoder and decoder dict
+        self.encode_maps = {}
+        self.decode_maps = {}
+        self.class_name = []
+        self.__character_coder()
 
-        if self.cifa_10:
-            self.orig_images, self.orig_labels = self.__load_cifa10()
-            self.class_num = 10
-            self.class_name = CIFAR10
-        else:
-            self.orig_images, self.orig_labels = self.__load_cifa100()
-            self.class_num = 100
-            self.class_name = CIFAR100
+        self.__load_data()
 
         self.images = self.orig_images
         self.labels = self.orig_labels
@@ -102,8 +85,13 @@ class CIFARDataGen(Sequence):
 
         image_batch = self.__cache_data(indexes, image_batch)
 
-        # One-hot label
+        # One-hot label, E.g. if self.class_num = 5
+        # Before: [[1,2,...],[3,4,...]...]
+        # After: [[[0,1,0,0,0],[0,0,1,0,0]...] , [[0,0,0,1,0],[0,0,0,0,1]...]...]
         label_batch = np_utils.to_categorical(self.labels[indexes], self.class_num)
+
+        # For the multi label fixed-length OCR problem, the label shape must be [BATCH,FIXED_LENGTH*CLASS]
+        label_batch = np.reshape(label_batch,(-1,self.fixed_length*self.class_num))
 
         if self.resize_shape:
             # Resize images interpolation choice
@@ -124,20 +112,41 @@ class CIFARDataGen(Sequence):
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
-    def __load_cifa10(self):
-        (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-        if self.train_phase == True:
-            return x_train, y_train
-        else:
-            return x_test, y_test
+    def __character_coder(self):
+        for i, char in enumerate(self.characterset, 1):
+            self.class_name.append(char)
+            self.encode_maps[char] = i-1
+            self.decode_maps[i-1] = char
 
-    def __load_cifa100(self):
-        (x_train, y_train), (x_test, y_test) = cifar100.load_data()
 
-        if self.train_phase == True:
-            return x_train, y_train
-        else:
-            return x_test, y_test
+
+    def __load_data(self):
+        df = pd.read_csv(self.data_path)
+        images = []
+        labels = []
+
+        for name in df[df.columns[0]].values:
+            image_path = os.path.join(self.images_path,name)
+            images.append(cv2.imread(image_path))
+
+        # labels is an array                       E.g [['A B...'],['C D...']...]
+        # 1st. Convert this array to list          E.g [['A','B',...],['C','D',...]...]
+        # 2nd. Convert this array with encode_maps E.g [[1,2...],[3,4...]...]
+        for label in df[df.columns[1]].values:
+            labels.append([self.encode_maps[x] if x in self.encode_maps else x for x in label.split(' ')])
+
+        self.class_num = len(self.encode_maps.keys())
+
+        self.orig_images = np.array(images)
+
+        self.orig_labels = np.array(labels)
+
+
+
+
+
+
+
 
     def __cache_data(self, indexes, images):
         cache_batch_image = np.zeros_like(images)

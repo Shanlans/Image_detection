@@ -1,2 +1,3 @@
-from .f1_score import f1
+from .f1_score import F1
 from .confusion_matrix import cm_analysis
+from .draw_hist import draw_hist
