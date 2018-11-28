@@ -26,7 +26,7 @@ _SUPPORTED_FRONTENDS = ["Xception",
 
 class BuildModel(object):
 
-    def __init__(self,input_shape,front_end,model_name,job_type,initial_weights=None):
+    def __init__(self,front_end,model_name,job_type,input_shape=None,initial_weights=None):
         """
 
         :param initial_weights:
@@ -43,36 +43,26 @@ class BuildModel(object):
 
 
 
-        if self.front_end:
-            features_model = self.build_frontend()
-
-            self.model = features_model
-
-        if self.model_name:
-            pass
-
-        self.model.summary()
-
-
 
 
     def build_model(self):
         if self.job_type == 'Classification':
             self.inputs = Input(shape=self.input_shape, dtype='float32', name='inputs')
             frontend_model = self.build_frontend()
+            frontend_model.summary()
+            return frontend_model
 
         elif self.job_type == 'Detection':
-            self.inputs = Input(shape=[None,None,3],dtype='float32',name='inputs')
+            self.inputs = Input(shape=(None,None,3),dtype='float32',name='inputs')
             frontend_model = self.build_frontend()
-
             if self.model_name == 'faster-rcnn':
-                num_anchors = len(FLAGS.anchor_box_scales) * len(eval(FLAGS.anchor_box_ratios))
-                rpn = rpn(frontend_model.output, num_anchors)
+                self.num_anchors = len(FLAGS.anchor_box_scales) * len(eval(FLAGS.anchor_box_ratios))
+                rpn = RPN(frontend_model.output, self.num_anchors)
 
+                rpnModel = Model(self.inputs,rpn,name='RPN')
 
-
-
-
+                rpnModel.summary()
+                return rpnModel
 
 
     def build_frontend(self):
@@ -88,8 +78,6 @@ class BuildModel(object):
         elif self.front_end == 'VGG19':
             features, end_point = VGG(vgg_version='vgg19',input_tensor=self.inputs)()
             end_point = features.get_layer(end_point).output
-
-
         else:
             pass
 

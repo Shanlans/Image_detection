@@ -6,7 +6,7 @@ from keras.callbacks import *
 from keras.utils import Sequence
 
 
-from .callback import *
+from train_utils.callback import *
 
 
 def callback_build(val_data_generate,batch_size,log_dir='./logs', tb_mode='batch', tb_period=20, save_ckpt_period=1,

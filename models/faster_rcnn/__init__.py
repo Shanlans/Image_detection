@@ -1,1 +1,1 @@
-from .rpn import rpn
+from .rpn import rpn as RPN

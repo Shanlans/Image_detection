@@ -1,10 +1,11 @@
 
 import os
 
+import tensorflow as tf
+
 from keras.applications.vgg16 import VGG16
 from keras.applications.vgg19 import VGG19
 
-import tensorflow as tf
 
 class VGG(object):
     '''
@@ -49,14 +50,16 @@ class VGG(object):
         weights = self.weights
         pooling = self.pooling
         input_tensor = self.input_tensor
-        base_model =VGG16(weights=weights,input_tensor=input_tensor,include_top=False,pooling=pooling)
+        with tf.variable_scope('VGG16') as scope:
+            base_model =VGG16(weights=weights,input_tensor=input_tensor,include_top=False,pooling=pooling)
         return base_model
 
     def __vgg19(self):
         weights = self.weights
         pooling = self.pooling
         input_tensor = self.input_tensor
-        base_model = VGG19(weights=weights,input_tensor=input_tensor,include_top=False,pooling=pooling)
+        with tf.variable_scope('VGG19') as scope:
+            base_model = VGG19(weights=weights,input_tensor=input_tensor,include_top=False,pooling=pooling)
         return base_model
 
     def __call__(self, *args, **kwargs):

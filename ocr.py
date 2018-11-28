@@ -1,14 +1,8 @@
-import os
-import shutil
-
 from keras.optimizers import *
-from keras.callbacks import *
 
 from data import *
 from models import *
 from task import *
-from monitor import *
-from train_utils import *
 
 epochs = 100
 

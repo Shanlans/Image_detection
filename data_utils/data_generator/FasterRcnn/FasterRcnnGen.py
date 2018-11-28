@@ -24,12 +24,11 @@ _FEATURE_MAP_SHAPE = {
 
 class FasterRcnnDataGen(Sequence):
 
-    def __init__(self, data_dir, batch_size, min_resize_shape=600, front_end='VGG16', train_phase=True, shuffle=False,
+    def __init__(self, data_dir, min_resize_shape=600, front_end='VGG16', train_phase=True, shuffle=False,
                  use_cache=False,aug=True):
         """
 
         :param data_dir:
-        :param batch_size: An Integer, Batch size for training
         :param min_resize_shape: An Integer. Default is 600. In the paper, author resize the image shorter size to 600 pixels
         :param front_end: A String. Default is Vgg-16. Which front-end to use. To help getting the output feature map shape
         :param train_phase: Boolean, Default is 'True' which will return the training data (images and labels),
@@ -40,7 +39,7 @@ class FasterRcnnDataGen(Sequence):
         :param aug: Boolean. Default is True. Open/off Augmentation
         """
         self.data_dir = data_dir
-        self.batch_size = batch_size
+        self.batch_size = 1 #faster-RCNN batch size should be equal to 1, cause the rpn output shape is different from each other image. But I think it can be optimized.
         self.min_resize_shape = min_resize_shape
         self.front_end = front_end
         self.train_phase = train_phase
@@ -84,9 +83,11 @@ class FasterRcnnDataGen(Sequence):
         Returns:
             A batch
         """
-        indexes = self.indexes[idx * self.batch_size: (idx + 1) * self.batch_size]
 
-        image_batch = self.images[indexes]
+        # Train RPN only support batch size = 1, because the output shape is different
+        index = self.indexes[idx]
+
+        image_batch = self.images[index]
 
         image_batch, rpn_batch,original_image_batch = self.__load_data(image_batch)
 
@@ -97,25 +98,20 @@ class FasterRcnnDataGen(Sequence):
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
-    def __load_data(self, image_batch):
-
-        images = []
-        rpn = []
-        original_image = []
-
-        for s in image_batch:
-            img_data_aug, x_img = faster_rcnn_aug(s, FLAGS, augment=self.aug)
-
-            # get image dimensions for resizing,resize the image so that smalles side is length = 600px
-            x_img, original_size, new_size = img_resize(x_img, self.min_resize_shape)
-
-            y_rpn_cls, y_rpn_regr = calc_rpn(img_data=img_data_aug, original_size=original_size, new_size=new_size,
-                                             img_length_calc_function=_FEATURE_MAP_SHAPE[self.front_end])
-
-            images.append(x_img)
-            rpn.append([y_rpn_cls,y_rpn_regr])
-            original_image.append(img_data_aug)
+    def __load_data(self,image):
 
 
-        return images, rpn,original_image
+        img_data_aug, x_img = faster_rcnn_aug(image, FLAGS, augment=self.aug)
+
+        # get image dimensions for resizing,resize the image so that smalles side is length = 600px
+        x_img, original_size, new_size = img_resize(x_img, self.min_resize_shape)
+
+
+
+        y_rpn_cls, y_rpn_regr = calc_rpn(img_data=img_data_aug, original_size=original_size, new_size=new_size,
+                                         img_length_calc_function=_FEATURE_MAP_SHAPE[self.front_end])
+
+
+
+        return x_img, [y_rpn_cls,y_rpn_regr],img_data_aug
 

@@ -7,6 +7,19 @@ flags = tf.app.flags
 
 FLAGS = flags.FLAGS
 
+_IMAGE_MEAN = [103.939, 116.779, 123.68]
+_IMAGE_STD = 1.0
+
+
+def preprocess(x_img):
+    x_img = x_img.astype(np.float32)
+    x_img[:, :, 0] -= _IMAGE_MEAN[0]
+    x_img[:, :, 1] -= _IMAGE_MEAN[1]
+    x_img[:, :, 2] -= _IMAGE_MEAN[2]
+    x_img /= _IMAGE_STD
+
+    return x_img
+
 
 def union(au, bu, area_intersection):
     area_a = (au[2] - au[0]) * (au[3] - au[1])  # GT 面积， （x2-x1）*(y2-y1)
@@ -51,7 +64,12 @@ def img_resize(x_img, img_min_side=600):
     x_img = cv2.resize(x_img, (resized_width, resized_height), interpolation=cv2.INTER_CUBIC)
 
     x_img = x_img[:, :, (2, 1, 0)]  # BGR -> RGB
-    x_img = x_img.astype(np.float32)
+
+    x_img = preprocess(x_img)
+    x_img = np.expand_dims(x_img,axis=0)
+
+
+
     return x_img, (width, height),(resized_width, resized_height)
 
 
@@ -223,16 +241,16 @@ def calc_rpn(img_data, original_size,new_size, img_length_calc_function):
             best_anchor_for_bbox[idx, 0], best_anchor_for_bbox[idx, 1], start:start + 4] = best_dx_for_bbox[idx, :]
 
     y_rpn_overlap = np.transpose(y_rpn_overlap, (2, 0, 1))
-    # y_rpn_overlap = np.expand_dims(y_rpn_overlap, axis=0)
+    y_rpn_overlap = np.expand_dims(y_rpn_overlap, axis=0)
 
     y_is_box_valid = np.transpose(y_is_box_valid, (2, 0, 1))
-    # y_is_box_valid = np.expand_dims(y_is_box_valid, axis=0)
+    y_is_box_valid = np.expand_dims(y_is_box_valid, axis=0)
 
     y_rpn_regr = np.transpose(y_rpn_regr, (2, 0, 1))
-    # y_rpn_regr = np.expand_dims(y_rpn_regr, axis=0)
+    y_rpn_regr = np.expand_dims(y_rpn_regr, axis=0)
 
-    pos_locs = np.where(np.logical_and(y_rpn_overlap[:, :, :] == 1, y_is_box_valid[:, :, :] == 1))
-    neg_locs = np.where(np.logical_and(y_rpn_overlap[:, :, :] == 0, y_is_box_valid[:, :, :] == 1))
+    pos_locs = np.where(np.logical_and(y_rpn_overlap[0,:, :, :] == 1, y_is_box_valid[0,:, :, :] == 1))
+    neg_locs = np.where(np.logical_and(y_rpn_overlap[0,:, :, :] == 0, y_is_box_valid[0,:, :, :] == 1))
 
     num_pos = len(pos_locs[0])
 
@@ -243,18 +261,18 @@ def calc_rpn(img_data, original_size,new_size, img_length_calc_function):
     if len(pos_locs[0]) > num_regions / 2:
         # 如果positive location 大于 128，则随机关闭一些 positive loc （如果是256个，则随机关闭128个）
         val_locs = random.sample(range(len(pos_locs[0])), len(pos_locs[0]) - num_regions / 2)
-        y_is_box_valid[pos_locs[0][val_locs], pos_locs[1][val_locs], pos_locs[2][val_locs]] = 0
+        y_is_box_valid[0,pos_locs[0][val_locs], pos_locs[1][val_locs], pos_locs[2][val_locs]] = 0
         num_pos = num_regions / 2
 
     if len(neg_locs[0]) + num_pos > num_regions:
         # 如果negive location 与 positive的location 的和大于128，则关闭那些比 positive 个数多的
         # 如果positive 个数等于128 则关闭多余128个，如果postive个数小于128，则关闭到跟postive个数一致的
         val_locs = random.sample(range(len(neg_locs[0])), len(neg_locs[0]) - num_pos)
-        y_is_box_valid[neg_locs[0][val_locs], neg_locs[1][val_locs], neg_locs[2][val_locs]] = 0
+        y_is_box_valid[0,neg_locs[0][val_locs], neg_locs[1][val_locs], neg_locs[2][val_locs]] = 0
 
-    y_rpn_cls = np.concatenate([y_is_box_valid, y_rpn_overlap], axis=0)  # [:,18,...] 对应
-    y_rpn_regr = np.concatenate([np.repeat(y_rpn_overlap, 4, axis=0), y_rpn_regr], axis=0)
+    y_rpn_cls = np.concatenate([y_is_box_valid, y_rpn_overlap], axis=1)  # [:,18,...] 对应
+    y_rpn_regr = np.concatenate([np.repeat(y_rpn_overlap, 4, axis=1), y_rpn_regr], axis=1)
     # [:,72,...] 这里[:,0:36,...]为了后续rpn regression loss计算中判定是不是当前bbox计算loss，当然[:,36:,...]就是所有的reg location
-    y_rpn_cls = np.transpose(y_rpn_cls, (1, 2, 0))  # cls,y,x ->y,x,cls
-    y_rpn_regr = np.transpose(y_rpn_regr, (1, 2, 0))  # reg,y,x -> y,x,reg
+    y_rpn_cls = np.transpose(y_rpn_cls, (0, 2, 3, 1))  # cls,y,x ->y,x,cls
+    y_rpn_regr = np.transpose(y_rpn_regr, (0, 2, 3, 1))  # reg,y,x -> y,x,reg
     return np.copy(y_rpn_cls), np.copy(y_rpn_regr)

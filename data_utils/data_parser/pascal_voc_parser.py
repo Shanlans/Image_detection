@@ -24,8 +24,8 @@ def get_pascal_detection_data(input_path):
 
         annot_path = os.path.join(data_path, 'Annotations')
         imgs_path = os.path.join(data_path, 'JPEGImages')
-        imgsets_path_trainval = os.path.join(data_path, 'ImageSets', 'Main', 'trainval.txt')
-        imgsets_path_test = os.path.join(data_path, 'ImageSets', 'Main', 'test.txt')
+        imgsets_path_trainval = os.path.join(data_path, 'ImageSets', 'Main', 'train.txt')
+        imgsets_path_test = os.path.join(data_path, 'ImageSets', 'Main', 'val.txt')
 
         trainval_files = []
         test_files = []
