@@ -24,7 +24,7 @@ def draw_hist(hist,metrics,save_path='./logs/statics/',clear_log=True):
             shutil.rmtree(save_path)
 
     if not os.path.isdir(save_path):
-        os.makedirs(save_path)
+        os.mkdir(save_path)
 
     if not isinstance(metrics,list):
         raise ('Metrics should be a list obj, but now is {}'.format(type(metrics)))
