@@ -1,1 +1,2 @@
 from .FasterRcnn import FasterRcnnDataGen
+from .AutoEncoderDataGen import AutoEncoderDataGen

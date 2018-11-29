@@ -29,6 +29,8 @@ It includes 3 parts:
 
 - Fast RCNN: To do regression of **Coordinate of Bounding Box** and **Class Score** for each **Proposal Region**
 
+![](https://pic2.zhimg.com/80/v2-1e43500c7cc9a9de211d737bc347ced9_hd.jpg)
+
 
 
 

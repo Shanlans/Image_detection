@@ -13,6 +13,7 @@ class CustomTensorboard(TensorBoard):
                  histogram_freq=0,
                  validation_data=None,
                  batch_size=32,
+                 write_image_output=False,
                  write_graph=True,
                  write_grads=False,
                  write_images=False,
@@ -20,6 +21,7 @@ class CustomTensorboard(TensorBoard):
                  update_freq='epoch'):
         """
 
+        :param write_image_output:
         :param log_dir:
         :param histogram_freq:
         :param validation_data:
@@ -30,6 +32,7 @@ class CustomTensorboard(TensorBoard):
         :param max_image_display:
         :param update_freq:
         """
+        self.write_image_output = write_image_output
         self.log_dir = log_dir
         self.histogram_freq = histogram_freq
 
@@ -72,6 +75,12 @@ class CustomTensorboard(TensorBoard):
 
         # w_img tensor must be 4-D with shape [batch_size,height,width,channels]
         assert len(w_img.get_shape().as_list()) == 4,'Should be the 4-D images tensor [batch_size,height,width,channels]'
+
+        if self.write_image_output:
+            o_img = self.model.outputs[0]
+            w_img = tf.concat((w_img, o_img), axis=2)
+
+
 
         tf.summary.image('Input_Image',w_img,max_outputs=self.max_image_display)
 

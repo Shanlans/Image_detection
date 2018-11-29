@@ -18,4 +18,8 @@ from .data_generator.OcrGen import OCRDataGen
 # Faster Rcnn
 from .data_generator import FasterRcnnDataGen
 
+# AutoEncoder
+
+from .data_generator import AutoEncoderDataGen
+
 # Tf-record: To do, the best practice is tf-data pipeline
