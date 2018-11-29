@@ -37,12 +37,12 @@ It includes 3 parts:
 #### 1. Basic Feature extract:  
 
 
-*[x] [vgg-16/19](../frontend/vgg.py)
+* [x] [vgg-16/19](../frontend/vgg.py)
 
 
 #### 2. RPN
-*[x] [GET RPN](./rpn.py)  
-*[ ] RPN to ROI
+* [x] [GET RPN](./rpn.py)  
+* [ ] RPN to ROI
 
 #### 3. Fast RCNN
 **TO DO**
