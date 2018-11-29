@@ -41,7 +41,7 @@ It includes 3 parts:
 
 
 #### 2. RPN
-* [x] [GET RPN](./rpn.py)  
+* [x] [GET RPN](../../data_utils/data_generator/FasterRcnn/Rpn_utils.py/calc_rpn)  
 * [ ] RPN to ROI
 
 #### 3. Fast RCNN
