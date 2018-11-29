@@ -41,8 +41,8 @@ It includes 3 parts:
 
 
 #### 2. RPN
-*[x] [GET RPN](./rpn.py)
-*[ ] [RPN to ROI]
+*[x] [GET RPN](./rpn.py)  
+*[ ] RPN to ROI
 
 #### 3. Fast RCNN
 **TO DO**
