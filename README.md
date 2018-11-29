@@ -1,1 +1,1 @@
-# Keras_training_platform
+# Image Detection
