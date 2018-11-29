@@ -41,7 +41,7 @@ It includes 3 parts:
 
 
 #### 2. RPN
-* [x] [GET RPN](https://github.com/Shanlans/Image_detection/blob/5d59041aaf3c2b6c279ea44ee685cf99ac3eafc5/data_utils/data_generator/FasterRcnn/Rpn_utils.py#L76)  
+* [x] [GET RPN](./rpn.py)  
 * [ ] RPN to ROI
 
 #### 3. Fast RCNN
