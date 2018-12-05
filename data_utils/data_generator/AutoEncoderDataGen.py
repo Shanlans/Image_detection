@@ -78,15 +78,15 @@ class AutoEncoderDataGen(Sequence):
             # ``cubic`` (identical to ``cv2.INTER_CUBIC``)
             image_batch = ia.imresize_many_images(image_batch, self.resize_shape, interpolation='linear')
 
-        label_batch = None
-        aug_batch = None
+        label_batch = image_batch
+        aug_batch = image_batch
         if self.augment == True:
             label_batch = self.aug_seq.augment_images(image_batch)
 
-            aug_batch = random_mask.augment_images(label_batch)
+            # aug_batch = random_mask.augment_images(label_batch)
 
 
-        return aug_batch,label_batch
+        return label_batch,label_batch
 
     def on_epoch_end(self):
         self.indexes = np.arange(len(self.images))
@@ -100,6 +100,8 @@ class AutoEncoderDataGen(Sequence):
 
             image = cv2.imread(path)
             image = cv2.resize(image,dsize=self.resize_shape)
+            image = np.float32(image)
+            image /= 255.0
             # image = (image - np.mean(image))/np.std(image)
             image_batch.append(image)
 

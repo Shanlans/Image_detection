@@ -13,6 +13,6 @@ flags.DEFINE_enum('model_name','auto-encoder',['faster-rcnn','auto-encoder'],'Ch
 
 flags.DEFINE_enum('front_end','VGG16',['VGG16','VGG19',],'Choose one from "VGG16","VGG19"...')
 
-flags.DEFINE_float('base_learning_rate',1e-6,'Start learning rate')
+flags.DEFINE_float('base_learning_rate',1e-4,'Start learning rate')
 
 flags.DEFINE_integer('epochs',100,'Training epochs')

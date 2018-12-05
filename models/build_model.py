@@ -35,8 +35,9 @@ class BuildModel(object):
         :param model_name:
         :param input_shape:
         :param job_type:
-        :param weights: String, Defaule is None. If None, initial weights from pretrain model, otherwise initial from string path
+        :param initial_weights: String, Defaule is None. If None, initial weights from pretrain model, otherwise initial from string path
         """
+        self.initial_weights = initial_weights
         self.front_end = front_end
         self.model_name = model_name
         self.input_shape = input_shape
@@ -81,11 +82,11 @@ class BuildModel(object):
 
 
         if self.front_end == 'VGG16':
-            features,end_point = VGG(vgg_version='vgg16',input_tensor=self.inputs)()
+            features,end_point = VGG(vgg_version='vgg16',input_tensor=self.inputs,weights=self.initial_weights)()
             end_point = features.get_layer(end_point).output
 
         elif self.front_end == 'VGG19':
-            features, end_point = VGG(vgg_version='vgg19',input_tensor=self.inputs)()
+            features, end_point = VGG(vgg_version='vgg19',input_tensor=self.inputs,weights=self.initial_weights)()
             end_point = features.get_layer(end_point).output
         else:
             pass
